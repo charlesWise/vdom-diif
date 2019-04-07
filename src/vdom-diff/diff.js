@@ -22,14 +22,39 @@ function diffAttr(oldAttrs, newAttrs) {
   return patch;
 }
 const ATTRS = 'ATTRS';
+const TEXT = 'TEXT';
+const REMOVE = 'REMOVE';
+const REPLACE = 'REPLACE';
+let Index = 0;
+function diffChildren(oldChildren, newChildren, patches) {
+  // 比较老的第一个和新的第一个
+  oldChildren.forEach((child, inx) => {
+    treeWalk(child, newChildren[inx], ++Index, patches)
+  })
+}
+// 判断是否是字符串
+function isString(node) {
+  return Object.prototype.toString.call(node) === '[object String]';
+}
 function treeWalk(oldTree, newTree, index, patches) {
   let currentPatch = [];
-  if (oldTree.type === newTree.type) {
+  if (!newTree) {
+    currentPatch.push({ type: REMOVE, index })
+  } else if (isString(oldTree) && isString(newTree)) {
+    if (oldTree !== newTree) {
+      currentPatch.push({ type: TEXT, text: newTree })
+    }
+  } else if (oldTree.type === newTree.type) {
     // 比较属性是否更新
     let attrs = diffAttr(oldTree.props, newTree.props);
     if (Object.keys(attrs).length) {
       currentPatch.push({ type: ATTRS, attrs })
     }
+    // 如果有儿子节点再去递归
+    diffChildren(oldTree.children, newTree.children, patches);
+  } else {
+    // 节点被替换
+    currentPatch.push({ type: REPLACE, newTree });
   }
   if (currentPatch.length) {
     patches[index] = currentPatch;
